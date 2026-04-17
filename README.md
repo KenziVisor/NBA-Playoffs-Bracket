@@ -1,6 +1,6 @@
 # Bracket Score
 
-Bracket Score is a local NBA playoffs bracket application for filling brackets, saving them, comparing results, and visualizing scores. It is designed for people who enjoy building and experimenting with custom NBA playoff bracket scoring methods. The current local web frontend was polished with help from Codex.
+Bracket Score is a local NBA playoffs bracket application for filling brackets, saving them, comparing results, and visualizing scores. It is designed for people who enjoy building and experimenting with custom NBA playoff bracket scoring methods.
 
 ## Who This Is For
 
@@ -71,10 +71,10 @@ The simplest place to customize the scoring logic is [`Game.calculate_score()`](
 
 In the current implementation, the default scoring logic awards points for:
 
-- predicting the correct winner side (`team1` vs `team2`)
-- predicting the correct winning team
-- predicting the correct series length
-- awarding a full perfect-series score when all series details match
+- predicting the correct winner side (`team1` vs `team2`) - 1 point
+- predicting the correct winning team - 1 point
+- predicting the correct series length - 1 point
+- awarding a full perfect-series score when all series details match - 4 points
 
 If you want a different scoring philosophy, this is the main method to edit.
 
@@ -83,10 +83,10 @@ If you want a different scoring philosophy, this is the main method to edit.
 If you prefer to run the project from source, clone the repository and install the dependencies from `requirements.txt`.
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/KenziVisor/NBA-Playoffs-Bracket.git
 cd Bracket_Score
 pip install -r requirements.txt
-python src/gui.py --no-browser
+python src/gui.py
 ```
 
 Then open your browser and go to:
