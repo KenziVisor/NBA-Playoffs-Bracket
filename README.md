@@ -104,6 +104,7 @@ Other source entry points:
 - 2025 bracket structure and first-round matchups: `Bracket2025` in `src/Bracket_Score_Classes.py`
 - Local web UI server: `src/gui.py`
 - Graph rendering: `src/graph.py`
+- For more information, enter 'Information.md'
 
 ## Local-Only Reminder
 
