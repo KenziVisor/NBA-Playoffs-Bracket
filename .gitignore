@@ -1,0 +1,8 @@
+saved_brackets/
+.idea/
+__pycache__/
+src/__pycache__/
+*.pyc
+.build-venv/
+build/
+.codex
