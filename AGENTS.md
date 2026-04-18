@@ -4,7 +4,7 @@
   - `Bracket_Score_Classes.py` defines `Game`, the abstract `Bracket` flow, and year-specific bracket classes such as `Bracket2025` and `Bracket2026`.
   - `src/score_saved_brackets.py` loads saved bracket pickles from `saved_brackets/`, prints scores against the results bracket, and asks `graph.py` to render the comparison graph when graph dependencies are installed.
   - `src/fill.py` runs the interactive terminal bracket-filling flow and saves the standard five pickle files into `saved_brackets/`.
-  - `src/gui.py` runs a local single-file web UI with three tabs: fill a fresh bracket, compare two uploaded pickles, or render a graph from 3+ uploaded pickles.
+  - `src/gui.py` runs a local single-file web UI with fill, preview, compare, and graph tabs; the preview tab renders an uploaded bracket pickle in the same read-only board layout used by the fill flow.
 
 - Runtime assumptions:
   - Python entry points live under `src/`, while saved pickle files live under `saved_brackets/` and logo assets live at the repo root in `NBA logos/`.

@@ -609,27 +609,24 @@ def active_games_for_round(bracket: Any, plan: BracketPlan, round_index: int) ->
     return bracket.games[start : min(end, len(bracket.games))]
 
 
-def serialize_state(message: str = "") -> dict[str, Any]:
-    bracket = STATE["bracket"]
-    plan: BracketPlan | None = STATE["plan"]
-    if bracket is None or plan is None:
-        return {
-            "loaded": False,
-            "message": message or STATE["message"],
-            "error": STATE["error"],
-            "complete": False,
-            "available_years": available_bracket_years(),
-        }
-
+def serialize_bracket_payload(
+    bracket: Any,
+    plan: BracketPlan,
+    *,
+    message: str = "",
+    error: str = "",
+    filename: str = "",
+    active_round: int | None = None,
+    complete: bool = False,
+) -> dict[str, Any]:
     actual_count = len(bracket.games)
-    active_round = STATE["active_round_index"]
     node_index_by_key = {node.key: node.index for node in plan.nodes}
 
     games_payload: list[dict[str, Any]] = []
     for node in plan.nodes:
         actual = node.index < actual_count
         game = bracket.games[node.index] if actual else Game(node.conference, node.round_name, "", "")
-        editable = actual and active_round is not None and node.round_index == active_round and not STATE["complete"]
+        editable = actual and active_round is not None and node.round_index == active_round and not complete
         games_payload.append(game_to_payload(game, node, actual, editable))
 
     connections: list[dict[str, Any]] = []
@@ -678,13 +675,13 @@ def serialize_state(message: str = "") -> dict[str, Any]:
 
     return {
         "loaded": True,
-        "message": message or STATE["message"],
-        "error": STATE["error"],
-        "filename": STATE["filename"],
+        "message": message,
+        "error": error,
+        "filename": filename,
         "bracket_name": getattr(bracket, "name", ""),
         "bracket_class": bracket.__class__.__name__,
         "bracket_year": bracket_year_for(bracket),
-        "complete": STATE["complete"],
+        "complete": complete,
         "active_round_index": active_round,
         "active_round_name": plan.round_names[active_round] if active_round is not None and active_round < len(plan.round_names) else "",
         "available_years": available_bracket_years(),
@@ -702,6 +699,43 @@ def serialize_state(message: str = "") -> dict[str, Any]:
         "games": games_payload,
         "connections": connections,
     }
+
+
+def serialize_uploaded_bracket(bracket: Any, message: str = "") -> dict[str, Any]:
+    plan = build_plan(bracket)
+    materialize_progression(bracket, plan)
+    active_round = next_active_round(bracket, plan)
+    complete = len(bracket.games) >= plan.round_ranges[-1][1] and active_round is None
+    return serialize_bracket_payload(
+        bracket,
+        plan,
+        message=message or f"Rendered {bracket_label(bracket)}.",
+        active_round=None,
+        complete=complete,
+    )
+
+
+def serialize_state(message: str = "") -> dict[str, Any]:
+    bracket = STATE["bracket"]
+    plan: BracketPlan | None = STATE["plan"]
+    if bracket is None or plan is None:
+        return {
+            "loaded": False,
+            "message": message or STATE["message"],
+            "error": STATE["error"],
+            "complete": False,
+            "available_years": available_bracket_years(),
+        }
+
+    return serialize_bracket_payload(
+        bracket,
+        plan,
+        message=message or STATE["message"],
+        error=STATE["error"],
+        filename=STATE["filename"],
+        active_round=STATE["active_round_index"],
+        complete=STATE["complete"],
+    )
 
 
 def load_session(bracket: Bracket, message: str, filename: str = "") -> None:
@@ -1294,11 +1328,11 @@ HTML_PAGE = r"""<!doctype html>
     <div class="title-row">
       <div>
         <h1>Bracket GUI</h1>
-        <div class="subtitle">Fill a fresh bracket, compare saved pickles, or render a score graph from uploaded brackets.</div>
+        <div class="subtitle">Fill a fresh bracket, preview saved brackets, compare pickles, or render a score graph from uploaded brackets.</div>
       </div>
       <div class="chip-row">
         <div class="chip">Single-file stdlib backend</div>
-        <div class="chip">Fill, compare, and graph tabs</div>
+        <div class="chip">Fill, preview, compare, and graph tabs</div>
         <div class="chip">Terminal quit support</div>
       </div>
     </div>
@@ -1307,6 +1341,7 @@ HTML_PAGE = r"""<!doctype html>
     <div class="panel" id="app">
       <div class="tab-bar">
         <button class="tab-button active" data-tab="fill">Fill</button>
+        <button class="tab-button" data-tab="preview">Preview</button>
         <button class="tab-button" data-tab="compare">Compare</button>
         <button class="tab-button" data-tab="graph">Graph</button>
       </div>
@@ -1358,6 +1393,30 @@ HTML_PAGE = r"""<!doctype html>
             <div class="form-row hidden" id="saveRow">
               <input class="save-name" id="saveName" placeholder="Enter bracket filename" />
               <button class="button secondary" id="saveBtn">Save Pickle</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="previewTab">
+        <div class="tool-shell">
+          <div class="tool-card">
+            <h2>Bracket Preview</h2>
+            <p>Upload one saved bracket pickle file to render the bracket visually, including every filled series score, in the same board layout as the fill tab.</p>
+          </div>
+          <div class="field-block">
+            <strong>Bracket File</strong>
+            <input class="file-input" id="previewFile" type="file" accept=".pkl,.pickle" />
+            <div class="upload-list" id="previewFileName"></div>
+          </div>
+          <div class="form-row">
+            <button class="button" id="previewBtn">Render Bracket Preview</button>
+          </div>
+          <div class="result-panel" id="previewResult"></div>
+          <div class="board-wrap hidden" id="previewBoardWrap">
+            <div class="board" id="previewBoard">
+              <svg class="connector-layer" id="previewConnectorLayer"></svg>
+              <div id="previewCardsLayer"></div>
             </div>
           </div>
         </div>
@@ -1429,6 +1488,7 @@ HTML_PAGE = r"""<!doctype html>
     const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
     const tabPanels = {
       fill: document.getElementById("fillTab"),
+      preview: document.getElementById("previewTab"),
       compare: document.getElementById("compareTab"),
       graph: document.getElementById("graphTab"),
     };
@@ -1451,6 +1511,14 @@ HTML_PAGE = r"""<!doctype html>
     const saveRow = document.getElementById("saveRow");
     const saveName = document.getElementById("saveName");
     const saveBtn = document.getElementById("saveBtn");
+    const previewFile = document.getElementById("previewFile");
+    const previewFileName = document.getElementById("previewFileName");
+    const previewBtn = document.getElementById("previewBtn");
+    const previewResult = document.getElementById("previewResult");
+    const previewBoardWrap = document.getElementById("previewBoardWrap");
+    const previewBoard = document.getElementById("previewBoard");
+    const previewConnectorLayer = document.getElementById("previewConnectorLayer");
+    const previewCardsLayer = document.getElementById("previewCardsLayer");
     const compareFileA = document.getElementById("compareFileA");
     const compareFileB = document.getElementById("compareFileB");
     const compareFileAName = document.getElementById("compareFileAName");
@@ -1467,6 +1535,7 @@ HTML_PAGE = r"""<!doctype html>
       button.addEventListener("click", () => switchTab(button.dataset.tab));
     });
     yearInput.addEventListener("input", renderSelectedYear);
+    previewFile.addEventListener("change", () => renderSelectedFiles(previewFile.files, previewFileName, false));
     compareFileA.addEventListener("change", () => renderSelectedFiles(compareFileA.files, compareFileAName, false));
     compareFileB.addEventListener("change", () => renderSelectedFiles(compareFileB.files, compareFileBName, false));
     graphFiles.addEventListener("change", () => renderSelectedFiles(graphFiles.files, graphFileNames, true));
@@ -1551,6 +1620,29 @@ HTML_PAGE = r"""<!doctype html>
       }
     });
 
+    previewBtn.addEventListener("click", async () => {
+      setResult(previewResult, "");
+      previewBoardWrap.classList.add("hidden");
+      try {
+        const file = previewFile.files[0];
+        if (!file) {
+          throw new Error("Choose one bracket pickle file.");
+        }
+        const response = await fetch("/preview-bracket", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({files: await collectUploadEntries([file])}),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Bracket preview failed.");
+        setResult(previewResult, data.message || "Bracket preview ready.");
+        renderBoard(data, previewBoard, previewConnectorLayer, previewCardsLayer, "preview_");
+        previewBoardWrap.classList.remove("hidden");
+      } catch (err) {
+        setResult(previewResult, err.message, true);
+      }
+    });
+
     compareBtn.addEventListener("click", async () => {
       setResult(compareResult, "");
       try {
@@ -1597,6 +1689,7 @@ HTML_PAGE = r"""<!doctype html>
 
     async function boot() {
       switchTab("fill");
+      renderSelectedFiles([], previewFileName, false);
       renderSelectedFiles([], compareFileAName, false);
       renderSelectedFiles([], compareFileBName, false);
       renderSelectedFiles([], graphFileNames, true);
@@ -1680,25 +1773,29 @@ HTML_PAGE = r"""<!doctype html>
       roundHint.textContent = data.complete ? "All rounds are complete." : "Fill every series in the active round before advancing.";
       saveRow.classList.toggle("hidden", !data.complete);
 
-      board.style.width = `${data.board_width}px`;
-      board.style.height = `${data.board_height}px`;
-      connectorLayer.setAttribute("viewBox", `0 0 ${data.board_width} ${data.board_height}`);
-      connectorLayer.setAttribute("width", data.board_width);
-      connectorLayer.setAttribute("height", data.board_height);
-
-      drawConnections(data.connections || []);
-      drawCards(data.games || []);
+      renderBoard(data, board, connectorLayer, cardsLayer);
     }
 
-    function drawConnections(connections) {
-      connectorLayer.innerHTML = "";
+    function renderBoard(data, boardElement, connectorElement, cardsElement, inputPrefix = "") {
+      boardElement.style.width = `${data.board_width}px`;
+      boardElement.style.height = `${data.board_height}px`;
+      connectorElement.setAttribute("viewBox", `0 0 ${data.board_width} ${data.board_height}`);
+      connectorElement.setAttribute("width", data.board_width);
+      connectorElement.setAttribute("height", data.board_height);
+
+      drawConnections(data.connections || [], connectorElement);
+      drawCards(data.games || [], cardsElement, inputPrefix);
+    }
+
+    function drawConnections(connections, connectorElement) {
+      connectorElement.innerHTML = "";
       for (const segment of connections) {
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
         line.setAttribute("x1", segment.x1);
         line.setAttribute("y1", segment.y1);
         line.setAttribute("x2", segment.x2);
         line.setAttribute("y2", segment.y2);
-        connectorLayer.appendChild(line);
+        connectorElement.appendChild(line);
       }
     }
 
@@ -1745,8 +1842,8 @@ HTML_PAGE = r"""<!doctype html>
       yearValue.textContent = year === null ? "N/A" : String(year);
     }
 
-    function drawCards(games) {
-      cardsLayer.innerHTML = "";
+    function drawCards(games, cardsContainer, inputPrefix = "") {
+      cardsContainer.innerHTML = "";
       for (const game of games) {
         const card = document.getElementById("cardTemplate").content.firstElementChild.cloneNode(true);
         card.style.left = `${game.x}px`;
@@ -1771,8 +1868,8 @@ HTML_PAGE = r"""<!doctype html>
           note.textContent = "This round will unlock after the previous round is submitted.";
         } else {
           body.innerHTML = `
-            ${renderTeamRow(game, 1)}
-            ${renderTeamRow(game, 2)}
+            ${renderTeamRow(game, 1, inputPrefix)}
+            ${renderTeamRow(game, 2, inputPrefix)}
           `;
           note.textContent = game.series_label || (game.complete ? `${game.winner} in ${game.num_games}` : "Enter 4 and 0-3 to resolve the series.");
           if (game.complete && game.winner) {
@@ -1783,22 +1880,26 @@ HTML_PAGE = r"""<!doctype html>
           }
         }
 
-        cardsLayer.appendChild(card);
+        cardsContainer.appendChild(card);
       }
 
-      for (const card of cardsLayer.querySelectorAll(".game-card.current")) {
+      for (const card of cardsContainer.querySelectorAll(".game-card.current")) {
         const inputs = card.querySelectorAll(".score");
         inputs.forEach(input => input.addEventListener("input", () => input.classList.remove("invalid")));
       }
     }
 
-    function renderTeamRow(game, side) {
+    function scoreInputId(gameIndex, side, inputPrefix = "") {
+      return `${inputPrefix}g${gameIndex}_s${side}`;
+    }
+
+    function renderTeamRow(game, side, inputPrefix = "") {
       const team = side === 1 ? game.team1 : game.team2;
       const logo = side === 1 ? game.team1_logo : game.team2_logo;
       const value = game.complete ? (game.winner === team ? 4 : Math.max(0, (game.num_games || 4) - 4)) : "";
       const disabled = game.editable ? "" : "disabled";
       const placeholder = game.editable ? "0-4" : "";
-      const id = `g${game.index}_s${side}`;
+      const id = scoreInputId(game.index, side, inputPrefix);
       return `
         <div class="team-row ${game.complete && game.winner === team ? "winner" : ""}">
           <img class="team-logo" src="/logos/${encodeURIComponent(logo)}" alt="${team || "team"} logo" />
@@ -1813,8 +1914,8 @@ HTML_PAGE = r"""<!doctype html>
       const games = state.data.games.filter(g => g.editable);
       const series = [];
       for (const game of games) {
-        const s1 = document.getElementById(`g${game.index}_s1`);
-        const s2 = document.getElementById(`g${game.index}_s2`);
+        const s1 = document.getElementById(scoreInputId(game.index, 1));
+        const s2 = document.getElementById(scoreInputId(game.index, 2));
         if (!s1 || !s2) return {ok: false, error: "Missing score inputs."};
         const a = s1.value.trim();
         const b = s2.value.trim();
@@ -1946,6 +2047,20 @@ class FillGUIHandler(BaseHTTPRequestHandler):
                 max_score = min(max_bracket_score(brackets[0]), max_bracket_score(brackets[1]))
                 message = f"{bracket_label(brackets[0], 'Bracket A')} vs {bracket_label(brackets[1], 'Bracket B')}: {score} / {max_score}"
                 write_json(self, {"message": message, "score": score, "max_score": max_score})
+            except Exception as exc:  # noqa: BLE001
+                write_json(self, {"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/preview-bracket":
+            try:
+                payload = read_json(self)
+                brackets = load_uploaded_brackets(payload.get("files", []), exact=1)
+                bracket = brackets[0]
+                response = serialize_uploaded_bracket(
+                    bracket,
+                    message=f"Rendered {bracket_label(bracket)} as a bracket preview.",
+                )
+                write_json(self, response)
             except Exception as exc:  # noqa: BLE001
                 write_json(self, {"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
