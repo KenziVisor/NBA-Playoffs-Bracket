@@ -20,7 +20,7 @@ Bracket Score is a local NBA playoffs bracket application for filling brackets, 
 
 - This project is intended for **Windows** when using the included `.exe` files.
 - No Python installation or command-line knowledge is required to run the packaged `.exe` files.
-- The `.exe` files already include the Python libraries from `requirements.txt`, including `matplotlib` and `networkx`.
+- The `.exe` files already include the Python libraries from `requirements.txt`, including `matplotlib`.
 - Do **not** run the `.exe` files from inside a ZIP file.
 - Keep the `.exe` files in the main project folder beside `saved_brackets/` and `NBA logos/`.
 - The web app runs only on your own computer through the local loopback address.
@@ -104,7 +104,6 @@ Other source entry points:
 - 2025 bracket structure and first-round matchups: `Bracket2025` in `src/Bracket_Score_Classes.py`
 - Local web UI server: `src/gui.py`
 - Graph rendering: `src/graph.py`
-- For more information, enter 'Information.md'
 
 ## Local-Only Reminder
 

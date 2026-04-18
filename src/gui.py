@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from Bracket_Score_Classes import Bracket, Bracket2025, Game
+from Bracket_Score_Classes import Bracket, Bracket2025, Bracket2026, Game
 from runtime_paths import project_root
 
 
@@ -78,6 +78,7 @@ class BracketPlan:
 STATE_LOCK = threading.Lock()
 BRACKET_CLASSES_BY_YEAR: dict[int, type[Bracket]] = {
     2025: Bracket2025,
+    2026: Bracket2026,
 }
 STATE: dict[str, Any] = {
     "loaded": False,
@@ -121,35 +122,98 @@ def normalize_team_key(team: str) -> str:
     cleaned = "".join(ch.lower() for ch in team if ch.isalnum())
     aliases = {
         "okc": "thunder",
+        "oklahomacity": "thunder",
+        "oklahomacitythunder": "thunder",
         "thunder": "thunder",
+        "phoenix": "suns",
+        "phoenixsuns": "suns",
+        "suns": "suns",
         "memphis": "grizzlies",
+        "memphisgrizzlies": "grizzlies",
         "grizzlies": "grizzlies",
         "denver": "nuggets",
+        "denvernuggets": "nuggets",
         "nuggets": "nuggets",
         "laclippers": "clippers",
+        "losangelesclippers": "clippers",
         "clippers": "clippers",
         "lalakers": "lakers",
+        "losangeleslakers": "lakers",
         "lakers": "lakers",
         "minnesota": "timberwolves",
+        "minnesotatimberwolves": "timberwolves",
         "timberwolves": "timberwolves",
         "houston": "rockets",
+        "houstonrockets": "rockets",
         "rockets": "rockets",
         "gsw": "warriors",
+        "goldenstate": "warriors",
+        "goldenstatewarriors": "warriors",
         "warriors": "warriors",
+        "spurs": "spurs",
+        "sanantonio": "spurs",
+        "sanantoniospurs": "spurs",
+        "portland": "trailblazers",
+        "trailblazers": "trailblazers",
+        "portlandtrailblazers": "trailblazers",
+        "dallas": "mavericks",
+        "dallasmavericks": "mavericks",
+        "mavericks": "mavericks",
+        "sacramento": "kings",
+        "sacramentokings": "kings",
+        "kings": "kings",
+        "neworleans": "pelicans",
+        "neworleanspelicans": "pelicans",
+        "pelicans": "pelicans",
+        "utah": "jazz",
+        "utahjazz": "jazz",
+        "jazz": "jazz",
         "cleavland": "cavaliers",
         "cleveland": "cavaliers",
+        "clevelandcavaliers": "cavaliers",
         "cavaliers": "cavaliers",
+        "miami": "heat",
         "miamiheat": "heat",
         "heat": "heat",
         "indiana": "pacers",
+        "indianapacers": "pacers",
         "pacers": "pacers",
         "milwaukee": "bucks",
+        "milwaukeebucks": "bucks",
         "bucks": "bucks",
+        "newyork": "knicks",
+        "newyorkknicks": "knicks",
         "knicks": "knicks",
+        "detroit": "pistons",
+        "detroitpistons": "pistons",
         "pistons": "pistons",
+        "toronto": "raptors",
+        "raptors": "raptors",
+        "torontoraptors": "raptors",
+        "atlanta": "hawks",
+        "hawks": "hawks",
+        "atlantahawks": "hawks",
+        "boston": "celtics",
         "bostonceltics": "celtics",
         "celtics": "celtics",
+        "philadelphia": "76ers",
+        "76ers": "76ers",
+        "sixers": "76ers",
+        "philadelphia76ers": "76ers",
+        "chicago": "bulls",
+        "chicagobulls": "bulls",
+        "bulls": "bulls",
+        "charlotte": "hornets",
+        "charlottehornets": "hornets",
+        "hornets": "hornets",
+        "brooklyn": "nets",
+        "brooklynnets": "nets",
+        "nets": "nets",
+        "washington": "wizards",
+        "washingtonwizards": "wizards",
+        "wizards": "wizards",
         "orlando": "magic",
+        "orlandomagic": "magic",
         "magic": "magic",
     }
     return aliases.get(cleaned, cleaned)
@@ -159,6 +223,7 @@ def logo_for_team(team: str) -> str:
     key = normalize_team_key(team)
     mapping = {
         "thunder": "thunder.png",
+        "suns": "suns.png",
         "grizzlies": "grizzlies.png",
         "nuggets": "nuggets.png",
         "clippers": "clippers.png",
@@ -166,13 +231,26 @@ def logo_for_team(team: str) -> str:
         "timberwolves": "timberwolves.png",
         "rockets": "rockets.png",
         "warriors": "warriors.png",
+        "spurs": "spurs.png",
+        "trailblazers": "trailBlazers.png",
+        "mavericks": "mavericks.png",
+        "kings": "kings.png",
+        "pelicans": "pelicans.png",
+        "jazz": "jazz.png",
         "cavaliers": "cavaliers.png",
         "heat": "heat.png",
         "pacers": "pacers.png",
         "bucks": "bucks.png",
         "knicks": "knicks.png",
         "pistons": "pistons.png",
+        "raptors": "raptors.png",
+        "hawks": "hawks.png",
         "celtics": "celtics.png",
+        "76ers": "76ers.png",
+        "bulls": "bulls.png",
+        "hornets": "hornets.png",
+        "nets": "nets.png",
+        "wizards": "wizards.png",
         "magic": "magic.png",
     }
     return mapping.get(key, FALLBACK_LOGO)
@@ -1250,7 +1328,7 @@ HTML_PAGE = r"""<!doctype html>
           <div class="selector-box">
             <p><strong>Choose a bracket year to begin.</strong><br />The app will create a fresh bracket object on the backend, then unlock the first round for score entry.</p>
             <input class="year-picker" id="yearInput" type="range" min="0" max="0" step="1" value="0" />
-            <div class="year-value" id="yearValue">2025</div>
+            <div class="year-value" id="yearValue">2026</div>
             <div class="year-ticks" id="yearTicks"></div>
             <button class="button" id="startBracketBtn">Start New Bracket</button>
             <div class="error-box" id="selectorError"></div>
@@ -1641,7 +1719,11 @@ HTML_PAGE = r"""<!doctype html>
 
       yearInput.min = "0";
       yearInput.max = String(count - 1);
-      yearInput.value = clampYearIndex(yearInput.value);
+      if (!state.data || !state.data.loaded) {
+        yearInput.value = String(count - 1);
+      } else {
+        yearInput.value = clampYearIndex(yearInput.value);
+      }
       yearValue.textContent = String(getSelectedYear());
       yearTicks.innerHTML = state.availableYears.map(year => `<span>${year}</span>`).join("");
     }

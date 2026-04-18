@@ -209,4 +209,29 @@ class Bracket2025(Bracket):
 
     def get_first_round_matchups(self) -> list[tuple[str, str, str]]:
         return list(self.FIRST_ROUND_MATCHUPS)
+    
 
+class Bracket2026(Bracket):
+    # Reference team names for future bracket definitions:
+    # Western Conference: Oklahoma City Thunder, Phoenix Suns,
+    # Los Angeles Lakers, Houston Rockets, Denver Nuggets,
+    # Minnesota Timberwolves, San Antonio Spurs, Portland Trail Blazers,
+    # Memphis Grizzlies, Los Angeles Clippers, Golden State Warriors,
+    # Dallas Mavericks, Sacramento Kings, New Orleans Pelicans, Utah Jazz.
+    # Eastern Conference: Cleveland Cavaliers, Miami Heat, Indiana Pacers,
+    # Milwaukee Bucks, New York Knicks, Detroit Pistons, Boston Celtics,
+    # Orlando Magic, Toronto Raptors, Atlanta Hawks, Philadelphia 76ers,
+    # Chicago Bulls, Charlotte Hornets, Brooklyn Nets, Washington Wizards.
+    FIRST_ROUND_MATCHUPS = (
+        ("west", "OKC", "Phoenix"),
+        ("west", "LA Lakers", "Houston"),
+        ("west", "Denver", "Minnesota"),
+        ("west", "Spurs", "Portland Trail Blazers"),
+        ("east", "Pistons", "Orlando"),
+        ("east", "Cleveland", "Toronto Raptors"),
+        ("east", "Knicks", "Atlanta Hawks"),
+        ("east", "Boston Celtics", "Philadelphia 76ers"),
+    )
+
+    def get_first_round_matchups(self) -> list[tuple[str, str, str]]:
+        return list(self.FIRST_ROUND_MATCHUPS)
