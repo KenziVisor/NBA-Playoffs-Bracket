@@ -101,7 +101,6 @@ Other source entry points:
 ## Developer Notes
 
 - Scoring logic: `src/Bracket_Score_Classes.py`
-- 2025 bracket structure and first-round matchups: `Bracket2025` in `src/Bracket_Score_Classes.py`
 - Local web UI server: `src/gui.py`
 - Graph rendering: `src/graph.py`
 
